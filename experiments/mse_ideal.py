@@ -32,15 +32,15 @@ def get_args():
     parser.add_argument(
         "--graph_set", type=str, required=True, help="graph dataset to use"
     )
-    parser.add_argument(
-        "--num_graphs", type=int, required=True, help="number of graphs to test"
-    )
     parser.add_argument("--p", type=int, required=True, help="QAOA layers")
     parser.add_argument(
         "--num_points",
         type=int,
         default=1024,
         help="number of points sampled for landscape",
+    )
+    parser.add_argument(
+        "--num_graphs", type=int, default=100, help="number of graphs to test"
     )
     parser.add_argument("--shots", type=int, default=8192, help="number of shots")
     parser.add_argument("--use_gpu", action="store_true", help="use GPU backend")
@@ -90,8 +90,8 @@ def main():
         except AerError as e:
             print(e)
 
-    edge_reductions = []
     node_reductions = []
+    edge_reductions = []
     mse = []
 
     theta_vals = np.random.uniform(0, 2 * np.pi, (args.num_points, 2 * args.p))
@@ -99,11 +99,11 @@ def main():
     for i, graph in enumerate(testing_graphs):
         red_graph = red_qaoa_exe(graph)
 
-        edge_reductions.append(
-            1 - red_graph.number_of_edges() / graph.number_of_edges()
-        )
         node_reductions.append(
             1 - red_graph.number_of_nodes() / graph.number_of_nodes()
+        )
+        edge_reductions.append(
+            1 - red_graph.number_of_edges() / graph.number_of_edges()
         )
 
         # create 1-layer qaoa circuits
@@ -138,9 +138,39 @@ def main():
 
         mse.append(np.mean((baseline_landscape - red_qaoa_landscape) ** 2))
 
-    print(f"Edge Reduction: {np.mean(edge_reductions)}")
     print(f"Node Reduction: {np.mean(node_reductions)}")
+    print(f"Edge Reduction: {np.mean(edge_reductions)}")
     print(f"MSE: {np.mean(mse)}")
+
+    new_results_key = f"{args.graph_set}_{args.p}"
+
+    if args.graph_set == "imdb":
+        if args.max_nodes > 10:
+            new_results_key += "_medium"
+        else:
+            new_results_key += "_small"
+
+    new_results = {
+        new_results_key: [
+            (np.mean(node_reductions), np.std(node_reductions)),
+            (np.mean(edge_reductions), np.std(edge_reductions)),
+            (np.mean(mse), np.std(mse)),
+        ]
+    }
+
+    # Load existing data if available
+    try:
+        with open("mse_ideal_results.json", "r") as file:
+            existing_results = json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        existing_results = {}
+
+    # Update existing data with new data
+    existing_results.update(new_results)
+
+    # Save the updated data back to the file
+    with open("mse_ideal_results.json", "w") as file:
+        json.dump(existing_results, file)
 
 
 if __name__ == "__main__":

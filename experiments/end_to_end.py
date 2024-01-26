@@ -3,6 +3,7 @@ import networkx as nx
 import numpy as np
 from tqdm import tqdm
 from scipy.optimize import minimize
+import json
 
 import path
 
@@ -114,6 +115,27 @@ def main():
 
     print(f"Optimal ratio: {np.mean(ratio_optimal)}")
     print(f"Average ratio: {np.mean(ratio_average)}")
+
+    new_results = {
+        args.p: [
+            (np.mean(ratio_optimal), np.std(ratio_optimal)),
+            (np.mean(ratio_average), np.std(ratio_average)),
+        ]
+    }
+
+    # Load existing data if available
+    try:
+        with open("end_to_end_results.json", "r") as file:
+            existing_results = json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        existing_results = {}
+
+    # Update existing data with new data
+    existing_results.update(new_results)
+
+    # Save the updated data back to the file
+    with open("end_to_end_results.json", "w") as file:
+        json.dump(existing_results, file)
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 
 import path
+import json
 
 from qiskit.circuit import Parameter
 from qiskit import Aer, transpile
@@ -118,6 +119,22 @@ def main():
 
     print("Mean Square Error:", baseline_mse)
     print("Mean Square Error red:", red_qaoa_mse)
+
+    new_results = {args.n: [baseline_mse, red_qaoa_mse]}
+
+    # Load existing data if available
+    try:
+        with open("mse_noisy_results.json", "r") as file:
+            existing_results = json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        existing_results = {}
+
+    # Update existing data with new data
+    existing_results.update(new_results)
+
+    # Save the updated data back to the file
+    with open("mse_noisy_results.json", "w") as file:
+        json.dump(existing_results, file)
 
 
 if __name__ == "__main__":
